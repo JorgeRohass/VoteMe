@@ -1,0 +1,39 @@
+
+:root {
+  --color-primary: #2596be;
+  --color-secondary: #3B6594;
+  --color-tertiary: #3A4C61;
+  --color-dark: #292E33;
+  --color-light: #ffffff;
+  --text-muted: #9ca3af;
+  --bg-gradient: linear-gradient(135deg, #292E33 0%, #3A4C61 100%);
+  
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  font: 16px/1.5 var(--sans);
+  color: var(--color-light);
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+h1, h2, h3 {
+  font-family: var(--heading);
+  margin: 0 0 16px;
+}
+

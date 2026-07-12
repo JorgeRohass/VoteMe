@@ -1,0 +1,265 @@
+.student-import-form {
+  width: 100%;
+  padding: 20px 0;
+}
+
+.import-container {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 600px;
+}
+
+.import-container h3 {
+  margin: 0 0 20px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.helper-text {
+  margin: 8px 0;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.file-input-wrapper {
+  position: relative;
+  margin: 12px 0;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-label {
+  display: block;
+  padding: 12px 16px;
+  background: white;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.3s ease;
+  color: #666;
+  font-size: 14px;
+}
+
+.file-label:hover {
+  border-color: #0066cc;
+  background: #f0f4ff;
+  color: #0066cc;
+}
+
+.file-input:disabled ~ .file-label {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-import {
+  width: 100%;
+  padding: 12px 16px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.btn-import:hover:not(:disabled) {
+  background: #0052a3;
+}
+
+.btn-import:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  padding: 12px 16px;
+  background: #fee;
+  border-left: 4px solid #f00;
+  border-radius: 4px;
+  color: #c00;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+/* Resultados */
+.import-results {
+  margin-top: 24px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 20px;
+}
+
+.results-summary {
+  margin-bottom: 20px;
+}
+
+.results-summary h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  border-left: 4px solid #999;
+}
+
+.stat.success {
+  background: #f0fdf4;
+  border-left-color: #22c55e;
+}
+
+.stat.error {
+  background: #fef2f2;
+  border-left-color: #ef4444;
+}
+
+.stat.warning {
+  background: #fffbeb;
+  border-left-color: #f59e0b;
+}
+
+.stat .label {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.stat .value {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Secciones de resultados */
+.results-section {
+  margin-bottom: 20px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.results-section h5 {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.results-section.success h5 {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.results-section.error h5 {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.results-section.warning h5 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.results-table {
+  overflow-x: auto;
+}
+
+.results-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 13px;
+}
+
+.results-table th {
+  padding: 10px 12px;
+  text-align: left;
+  background: #f9f9f9;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 600;
+  color: #333;
+}
+
+.results-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.results-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Listas de errores y duplicados */
+.results-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.error-item,
+.warning-item {
+  padding: 10px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error-item:last-child,
+.warning-item:last-child {
+  border-bottom: none;
+}
+
+.fila {
+  font-weight: 600;
+  margin-right: 8px;
+}
+
+.error-section .error-item {
+  color: #991b1b;
+  background: #fef2f2;
+}
+
+.warning-section .warning-item {
+  color: #92400e;
+  background: #fffbeb;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .import-container {
+    padding: 16px;
+  }
+
+  .summary-stats {
+    grid-template-columns: 1fr;
+  }
+}
