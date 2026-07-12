@@ -1,6 +1,6 @@
 
+import type { ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Formulario from './pages/tsx/Formulario';
 import Home from './pages/tsx/Home';
 import Login from './pages/tsx/Login';
 import AuthCallback from './pages/tsx/AuthCallback';
@@ -15,7 +15,7 @@ import { RamoDetails } from './pages/professor/RamoDetails'
 import { GroupEvaluationView } from './pages/professor/GroupEvaluationView'
 import { EvaluationForm } from './pages/student/EvaluationForm'
 
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const token = localStorage.getItem('token');
   if (!token) {
     return <Navigate to="/login" />;

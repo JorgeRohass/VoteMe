@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiUrl } from '../../utils/api'
 
 interface Criterio {
   id_criterio: number
@@ -42,7 +43,7 @@ export function EvaluationForm() {
 
     const loadSession = async () => {
       try {
-        const sesionRes = await fetch(`http://localhost:3000/api/evaluaciones/sesiones/${codigo}`)
+        const sesionRes = await fetch(apiUrl(`/evaluaciones/sesiones/${codigo}`))
         const sesionData = await sesionRes.json()
         
         if (!sesionRes.ok) {
@@ -53,7 +54,7 @@ export function EvaluationForm() {
 
         setSesion(sesionData)
 
-        const criteriosRes = await fetch(`http://localhost:3000/api/evaluaciones/${sesionData.id_evaluacion}/criterios`)
+        const criteriosRes = await fetch(apiUrl(`/evaluaciones/${sesionData.id_evaluacion}/criterios`))
         const criteriosData = await criteriosRes.json()
         
         if (criteriosRes.ok) {
@@ -100,7 +101,7 @@ export function EvaluationForm() {
         comentario: respuestas[c.id_criterio]?.comentario || null
       }))
 
-      const res = await fetch('http://localhost:3000/api/evaluaciones/respuestas', {
+      const res = await fetch(apiUrl('/evaluaciones/respuestas'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

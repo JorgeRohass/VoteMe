@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiUrl } from '../../utils/api'
 import './sala-espera.css'
 
 interface SalaEsperaFormProps {
@@ -24,7 +25,7 @@ export function SalaEsperaForm({ onAcceder }: SalaEsperaFormProps) {
 
     try {
       // Validar código contra el backend
-      const res = await fetch(`http://localhost:3000/api/evaluaciones/sesiones/${codigo.trim().toUpperCase()}`)
+      const res = await fetch(apiUrl(`/evaluaciones/sesiones/${codigo.trim().toUpperCase()}`))
       const data = await res.json()
 
       if (!res.ok) {

@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { apiUrl } from '../utils/api'
 
 interface ImportRamoModalProps {
   ramoId: string
@@ -55,7 +56,7 @@ export function ImportStudentsModal({ ramoId, isOpen, onClose, onSuccess }: Impo
     formData.append('ramoId', ramoId)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/ramos/${ramoId}/import-students`, {
+      const response = await fetch(apiUrl(`/ramos/${ramoId}/import-students`), {
         method: 'POST',
         body: formData,
       })

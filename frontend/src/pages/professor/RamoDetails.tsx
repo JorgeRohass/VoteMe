@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { EvaluationHeader } from '../../components/evaluation/EvaluationHeader'
 import { ImportStudentsModal } from '../../components/ImportStudentsModal'
+import { apiUrl } from '../../utils/api'
 import '../../styles/evaluation.css'
 
 interface Ramo {
@@ -111,11 +112,11 @@ export function RamoDetails() {
     try {
       setLoading(true)
       const [ramoRes, studentsRes, groupsRes, usersRes, evalsRes] = await Promise.all([
-        fetch(`http://localhost:3000/api/ramos/${ramoId}`),
-        fetch(`http://localhost:3000/api/ramos/${ramoId}/students`),
-        fetch(`http://localhost:3000/api/ramos/${ramoId}/groups`),
-        fetch(`http://localhost:3000/api/auth/users`),
-        fetch(`http://localhost:3000/api/ramos/${ramoId}/evaluaciones`)
+        fetch(apiUrl(`/ramos/${ramoId}`)),
+        fetch(apiUrl(`/ramos/${ramoId}/students`)),
+        fetch(apiUrl(`/ramos/${ramoId}/groups`)),
+        fetch(apiUrl('/auth/users')),
+        fetch(apiUrl(`/ramos/${ramoId}/evaluaciones`))
       ])
 
       const ramoData = await ramoRes.json()
@@ -154,7 +155,7 @@ export function RamoDetails() {
     const loadCriterios = async () => {
       try {
         setCriteriosLoading(true)
-        const res = await fetch(`http://localhost:3000/api/evaluaciones/${selectedEvalId}/criterios`)
+        const res = await fetch(apiUrl(`/evaluaciones/${selectedEvalId}/criterios`))
         const data = await res.json()
 
         if (res.ok) {
@@ -178,7 +179,7 @@ export function RamoDetails() {
     setAddStudentSuccess(null)
 
     try {
-      const res = await fetch(`http://localhost:3000/api/ramos/${ramoId}/students`, {
+      const res = await fetch(apiUrl(`/ramos/${ramoId}/students`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: studentIdentifier })
@@ -201,7 +202,7 @@ export function RamoDetails() {
     setAddGroupError(null)
 
     try {
-      const res = await fetch(`http://localhost:3000/api/ramos/${ramoId}/groups`, {
+      const res = await fetch(apiUrl(`/ramos/${ramoId}/groups`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -241,7 +242,7 @@ export function RamoDetails() {
 
     try {
       // Como simplificación, usamos la misma fecha para inicio y fin
-      const res = await fetch(`http://localhost:3000/api/ramos/${ramoId}/evaluaciones`, {
+      const res = await fetch(apiUrl(`/ramos/${ramoId}/evaluaciones`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -256,7 +257,7 @@ export function RamoDetails() {
       if (!res.ok) {
         setAddEvalError(data.error || 'No se pudo crear la evaluación')
       } else {
-        const criteriosRes = await fetch(`http://localhost:3000/api/evaluaciones/${data.id_evaluacion}/criterios`, {
+        const criteriosRes = await fetch(apiUrl(`/evaluaciones/${data.id_evaluacion}/criterios`), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ criterios: criteriosValidos })
@@ -301,7 +302,7 @@ export function RamoDetails() {
     }
 
     try {
-      const res = await fetch(`http://localhost:3000/api/evaluaciones/${selectedEvalId}/criterios`, {
+      const res = await fetch(apiUrl(`/evaluaciones/${selectedEvalId}/criterios`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ criterios: criteriosValidos })

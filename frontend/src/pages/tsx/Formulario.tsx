@@ -1,5 +1,7 @@
-import React, { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { apiUrl } from '../../utils/api';
 import '../css/Formulario.css';
 
 function Formulario() {
@@ -30,7 +32,7 @@ function Formulario() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
+      const response = await fetch(apiUrl('/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rut: rutFromQuery, name, email }),

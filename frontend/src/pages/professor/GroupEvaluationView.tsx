@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { apiUrl } from '../../utils/api'
 
 interface Criterio {
   id_criterio: number
@@ -72,7 +73,7 @@ export function GroupEvaluationView() {
         console.log('Cargando datos para evaluacion:', evaluacionId, 'grupo:', grupoId)
         
         // Cargar evaluación
-        const evalRes = await fetch(`http://localhost:3000/api/evaluaciones/${evaluacionId}`)
+        const evalRes = await fetch(apiUrl(`/evaluaciones/${evaluacionId}`))
         if (evalRes.ok) {
           const evalData = await evalRes.json()
           setEvaluacion(evalData)
@@ -86,7 +87,7 @@ export function GroupEvaluationView() {
         }
 
         // Cargar grupo
-        const grupoRes = await fetch(`http://localhost:3000/api/groups/${grupoId}`)
+        const grupoRes = await fetch(apiUrl(`/groups/${grupoId}`))
         if (grupoRes.ok) {
           const grupoData = await grupoRes.json()
           setGrupo(grupoData)
@@ -100,7 +101,7 @@ export function GroupEvaluationView() {
         }
 
         // Cargar criterios
-        const criteriosRes = await fetch(`http://localhost:3000/api/evaluaciones/${evaluacionId}/criterios`)
+        const criteriosRes = await fetch(apiUrl(`/evaluaciones/${evaluacionId}/criterios`))
         if (criteriosRes.ok) {
           const criteriosData = await criteriosRes.json()
           setCriterios(criteriosData)
@@ -108,7 +109,7 @@ export function GroupEvaluationView() {
         }
 
         // Cargar evaluación-grupo (esto puede fallar si no existe, no es crítico)
-        const evalGrupoRes = await fetch(`http://localhost:3000/api/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/resultados`)
+        const evalGrupoRes = await fetch(apiUrl(`/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/resultados`))
         if (evalGrupoRes.ok) {
           const evalGrupoData = await evalGrupoRes.json()
           setEvaluacionGrupo(evalGrupoData)
@@ -117,7 +118,7 @@ export function GroupEvaluationView() {
           console.log('Evaluación-grupo no encontrada, creando relación...')
           // Crear la relación automáticamente si no existe
           try {
-            const linkRes = await fetch('http://localhost:3000/api/evaluaciones/link', {
+            const linkRes = await fetch(apiUrl('/evaluaciones/link'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -166,7 +167,7 @@ export function GroupEvaluationView() {
 
     try {
       setError(null)
-      const res = await fetch('http://localhost:3000/api/evaluaciones/sesiones', {
+      const res = await fetch(apiUrl('/evaluaciones/sesiones'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -192,7 +193,7 @@ export function GroupEvaluationView() {
     if (!evaluacionId || !grupoId) return
 
     try {
-      const res = await fetch(`http://localhost:3000/api/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/resultados`)
+      const res = await fetch(apiUrl(`/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/resultados`))
       if (res.ok) {
         const data = await res.json()
         setEvaluacionGrupo(data)
@@ -207,7 +208,7 @@ export function GroupEvaluationView() {
 
     try {
       setError(null)
-      const res = await fetch(`http://localhost:3000/api/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/calcular`)
+      const res = await fetch(apiUrl(`/evaluaciones/grupo/${grupoId}/evaluacion/${evaluacionId}/calcular`))
       const data = await res.json()
       
       if (!res.ok) {
@@ -271,7 +272,7 @@ export function GroupEvaluationView() {
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.9rem', color: '#888' }}>
           <span>Estado: <strong>{evaluacionGrupo?.estado || 'pendiente'}</strong></span>
           {evaluacionGrupo?.nota_final !== null && evaluacionGrupo?.nota_final !== undefined && (
-            <span>Nota final: <strong>{parseFloat(evaluacionGrupo.nota_final).toFixed(2)}</strong></span>
+            <span>Nota final: <strong>{Number(evaluacionGrupo.nota_final).toFixed(2)}</strong></span>
           )}
         </div>
       </div>

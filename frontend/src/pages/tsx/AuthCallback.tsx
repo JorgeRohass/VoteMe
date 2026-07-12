@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { apiUrl } from '../../utils/api';
 
 const AuthCallback = () => {
   const [searchParams] = useSearchParams();
@@ -17,7 +18,7 @@ const AuthCallback = () => {
 
     const verifyLogin = async () => {
       try {
-        const response = await fetch('http://localhost:3000/api/auth/verify-sso', {
+        const response = await fetch(apiUrl('/auth/verify-sso'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: rut, v }),

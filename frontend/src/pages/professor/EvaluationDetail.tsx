@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EvaluationHeader } from '../../components/evaluation/EvaluationHeader'
+import { apiUrl } from '../../utils/api'
 import '../../styles/evaluation.css'
 
 interface Curso {
@@ -30,7 +31,7 @@ export function EvaluationDetail() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3000/api/ramos?id_profesor=${user.id}`)
+      const response = await fetch(apiUrl(`/ramos?id_profesor=${user.id}`))
       const data = await response.json()
 
       if (!response.ok) {
@@ -62,7 +63,7 @@ export function EvaluationDetail() {
 
     try {
       const creditosNumber = creditos !== '' ? Number(creditos) : null
-      const response = await fetch('http://localhost:3000/api/ramos', {
+      const response = await fetch(apiUrl('/ramos'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

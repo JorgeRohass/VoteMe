@@ -12,22 +12,51 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Verificamos conexión a DB e inicializamos tablas al arrancar
-const startServer = async () => {
-  try {
-    await checkConnection();
-    await initDb();
-  } catch (err) {
-    console.error('❌ Startup failed:', err);
-    process.exit(1);
+let dbReady = false;
+let dbBootstrapPromise = null;
+
+const ensureDbReady = async () => {
+  if (dbReady) return;
+
+  if (!dbBootstrapPromise) {
+    dbBootstrapPromise = (async () => {
+      try {
+        await checkConnection();
+        await initDb();
+        dbReady = true;
+      } catch (err) {
+        console.error('❌ Startup failed:', err);
+        throw err;
+      }
+    })();
   }
+
+  return dbBootstrapPromise;
 };
 
-startServer();
+app.use(async (req, res, next) => {
+  try {
+    await ensureDbReady();
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Database initialization failed' });
+  }
+});
 
 // Rutas
 app.use('/api', routes);
 
-app.listen(port, () => {
-  console.log(`🚀 Backend server is running on http://localhost:${port}`);
-});
+if (require.main === module) {
+  (async () => {
+    try {
+      await ensureDbReady();
+      app.listen(port, () => {
+        console.log(`🚀 Backend server is running on http://localhost:${port}`);
+      });
+    } catch (err) {
+      process.exit(1);
+    }
+  })();
+}
+
+module.exports = app;

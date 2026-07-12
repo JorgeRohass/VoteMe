@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { apiUrl } from '../utils/api'
 import './StudentImportForm.css'
 
 interface ImportResult {
@@ -61,7 +62,7 @@ export function StudentImportForm({ groupId, onImportSuccess }: StudentImportPro
     formData.append('idGrupo', groupId)
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/students/import`, {
+      const response = await fetch(apiUrl('/students/import'), {
         method: 'POST',
         body: formData,
       })
