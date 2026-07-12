@@ -12,17 +12,27 @@ const allowedOrigins = [
   process.env.CORS_ORIGIN,
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://vote-me-front.vercel.app',
+  'https://vote-me-front-git-main-jorgerohass-projects.vercel.app',
+  'https://vote-me-front-ft6h66dm1-jorgerohass-projects.vercel.app',
+  'https://vote-me-front-f1u6h4pf5-jorgerohass-projects.vercel.app',
   'https://vote-me-front-cy9xqpzmo-jorgerohass-projects.vercel.app'
 ].filter(Boolean);
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  return /https:\/\/.*\.vercel\.app$/i.test(origin) || /http:\/\/localhost(:\d+)?$/i.test(origin);
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isAllowedOrigin(origin)) {
       callback(null, true);
       return;
     }
 
-    callback(new Error('Not allowed by CORS'));
+    callback(null, false);
   },
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -57,6 +67,11 @@ const ensureDbReady = async () => {
 };
 
 app.use(async (req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
+
   try {
     await ensureDbReady();
     next();
