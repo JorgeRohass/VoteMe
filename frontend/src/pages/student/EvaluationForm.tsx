@@ -2,6 +2,11 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { apiUrl } from '../../utils/api'
 
+interface SubCriterio {
+  nombre: string
+  puntaje: number | string
+}
+
 interface Criterio {
   id_criterio: number
   nombre: string
@@ -9,6 +14,7 @@ interface Criterio {
   ponderacion: number
   tipo_escala: string
   valor_maximo: number
+  subcriterios?: SubCriterio[]
 }
 
 interface Sesion {
@@ -79,6 +85,11 @@ export function EvaluationForm() {
         [field]: value
       }
     }))
+  }
+
+  const handleSubcriterioSelect = (criterio: Criterio, subcriterio: SubCriterio) => {
+    const puntaje = typeof subcriterio.puntaje === 'number' ? subcriterio.puntaje : Number(subcriterio.puntaje) || 0
+    handleRespuestaChange(criterio.id_criterio, 'valor', puntaje)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,27 +238,57 @@ export function EvaluationForm() {
               </div>
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                Calificación (0 - {criterio.valor_maximo})
-              </label>
-              <input 
-                type="number" 
-                min="0"
-                max={criterio.valor_maximo}
-                step="0.1"
-                value={respuestas[criterio.id_criterio]?.valor || ''}
-                onChange={(e) => handleRespuestaChange(criterio.id_criterio, 'valor', parseFloat(e.target.value) || 0)}
-                style={{ 
-                  width: '100%', 
-                  padding: '0.75rem', 
-                  borderRadius: '6px', 
-                  border: '1px solid #ccc',
-                  fontSize: '1rem'
-                }}
-                required
-              />
-            </div>
+            {Array.isArray(criterio.subcriterios) && criterio.subcriterios.length > 0 ? (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
+                  Selecciona un subcriterio
+                </label>
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {criterio.subcriterios.map((sub, index) => {
+                    const puntaje = typeof sub.puntaje === 'number' ? sub.puntaje : Number(sub.puntaje) || 0
+                    return (
+                      <button
+                        key={`${criterio.id_criterio}-${index}`}
+                        type="button"
+                        onClick={() => handleSubcriterioSelect(criterio, sub)}
+                        style={{
+                          padding: '0.75rem',
+                          borderRadius: '6px',
+                          border: respuestas[criterio.id_criterio]?.valor === puntaje ? '2px solid #1976d2' : '1px solid #ccc',
+                          backgroundColor: respuestas[criterio.id_criterio]?.valor === puntaje ? '#e7f5ff' : 'white',
+                          textAlign: 'left',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {sub.nombre} — {puntaje}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
+                  Calificación (0 - {criterio.valor_maximo})
+                </label>
+                <input 
+                  type="number" 
+                  min="0"
+                  max={criterio.valor_maximo}
+                  step="0.1"
+                  value={respuestas[criterio.id_criterio]?.valor || ''}
+                  onChange={(e) => handleRespuestaChange(criterio.id_criterio, 'valor', parseFloat(e.target.value) || 0)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.75rem', 
+                    borderRadius: '6px', 
+                    border: '1px solid #ccc',
+                    fontSize: '1rem'
+                  }}
+                  required
+                />
+              </div>
+            )}
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>

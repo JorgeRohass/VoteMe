@@ -8,6 +8,18 @@ const calculateEqualPonderacion = (totalCriterios) => {
   return Number((100 / totalCriterios).toFixed(2));
 };
 
+const parseSubcriterios = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
 const recalculatePonderaciones = async (client, idEvaluacion) => {
   const criteriosResult = await client.query(
     'SELECT id_criterio FROM criterios_evaluacion WHERE id_evaluacion = $1 ORDER BY id_criterio',
@@ -34,7 +46,10 @@ const listCriterios = async (req, res) => {
       'SELECT * FROM criterios_evaluacion ORDER BY id_evaluacion, id_criterio'
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map((criterio) => ({
+      ...criterio,
+      subcriterios: parseSubcriterios(criterio.subcriterios),
+    })));
   } catch (error) {
     console.error('Error listing criterios:', error);
     res.status(500).json({ error: 'No se pudieron obtener los criterios de evaluación' });
@@ -59,7 +74,10 @@ const listCriteriosByEvaluacion = async (req, res) => {
       [id_evaluacion]
     );
 
-    res.json(result.rows);
+    res.json(result.rows.map((criterio) => ({
+      ...criterio,
+      subcriterios: parseSubcriterios(criterio.subcriterios),
+    })));
   } catch (error) {
     console.error('Error listing criterios by evaluacion:', error);
     res.status(500).json({ error: 'No se pudieron obtener los criterios de la evaluación' });
@@ -79,7 +97,10 @@ const getCriterioById = async (req, res) => {
       return res.status(404).json({ error: 'Criterio de evaluación no encontrado' });
     }
 
-    res.json(result.rows[0]);
+    res.json({
+      ...result.rows[0],
+      subcriterios: parseSubcriterios(result.rows[0].subcriterios),
+    });
   } catch (error) {
     console.error('Error getting criterio by id:', error);
     res.status(500).json({ error: 'No se pudo obtener el criterio de evaluación' });

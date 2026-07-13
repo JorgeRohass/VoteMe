@@ -137,8 +137,14 @@ const initDb = async () => {
         ponderacion DECIMAL(5,2) NOT NULL,
         tipo_escala VARCHAR(20) DEFAULT 'porcentaje',
         valor_maximo INT DEFAULT 100,
+        subcriterios JSONB DEFAULT '[]'::jsonb,
         id_evaluacion INT NOT NULL REFERENCES evaluaciones(id_evaluacion) ON DELETE CASCADE
       );
+    `);
+
+    await client.query(`
+      ALTER TABLE criterios_evaluacion
+      ADD COLUMN IF NOT EXISTS subcriterios JSONB DEFAULT '[]'::jsonb;
     `);
 
     // 11. Tabla de Códigos de Sesión

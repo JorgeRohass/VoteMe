@@ -41,9 +41,16 @@ interface Evaluation {
   fecha_fin: string
 }
 
+interface SubCriterioDraft {
+  nombre: string
+  puntaje: string
+}
+
 interface CriterioDraft {
   nombre: string
   descripcion: string
+  valor_maximo: string
+  subcriterios: SubCriterioDraft[]
 }
 
 interface CriterioEvaluacion {
@@ -54,6 +61,7 @@ interface CriterioEvaluacion {
   tipo_escala: string
   valor_maximo: number
   id_evaluacion: number
+  subcriterios?: Array<{ nombre: string; puntaje: string | number }>
 }
 
 export function RamoDetails() {
@@ -89,12 +97,12 @@ export function RamoDetails() {
   const [newEvalTitle, setNewEvalTitle] = useState('')
   const [newEvalDesc, setNewEvalDesc] = useState('')
   const [newEvalDate, setNewEvalDate] = useState('')
-  const [newEvalCriterios, setNewEvalCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '' }])
+  const [newEvalCriterios, setNewEvalCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   const [addEvalError, setAddEvalError] = useState<string | null>(null)
 
   // Criterios de evaluación
   const [isCriteriosModalOpen, setIsCriteriosModalOpen] = useState(false)
-  const [criterios, setCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '' }])
+  const [criterios, setCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   const [selectedEvalCriterios, setSelectedEvalCriterios] = useState<CriterioEvaluacion[]>([])
   const [criteriosLoading, setCriteriosLoading] = useState(false)
   const [criteriosError, setCriteriosError] = useState<string | null>(null)
@@ -232,7 +240,14 @@ export function RamoDetails() {
     setAddEvalError(null)
 
     const criteriosValidos = newEvalCriterios
-      .map(c => ({ nombre: c.nombre.trim(), descripcion: c.descripcion.trim() }))
+      .map(c => ({
+        nombre: c.nombre.trim(),
+        descripcion: c.descripcion.trim(),
+        valor_maximo: c.valor_maximo.trim() || '7',
+        subcriterios: c.subcriterios
+          .map(sc => ({ nombre: sc.nombre.trim(), puntaje: sc.puntaje.trim() || '0' }))
+          .filter(sc => sc.nombre)
+      }))
       .filter(c => c.nombre)
 
     if (criteriosValidos.length === 0) {
@@ -273,7 +288,7 @@ export function RamoDetails() {
         setNewEvalTitle('')
         setNewEvalDesc('')
         setNewEvalDate('')
-        setNewEvalCriterios([{ nombre: '', descripcion: '' }])
+        setNewEvalCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
         setIsEvalModalOpen(false)
         setSelectedEvalId(data.id_evaluacion)
         loadData()
@@ -293,7 +308,14 @@ export function RamoDetails() {
     }
 
     const criteriosValidos = criterios
-      .map(c => ({ nombre: c.nombre.trim(), descripcion: c.descripcion.trim() }))
+      .map(c => ({
+        nombre: c.nombre.trim(),
+        descripcion: c.descripcion.trim(),
+        valor_maximo: c.valor_maximo.trim() || '7',
+        subcriterios: c.subcriterios
+          .map(sc => ({ nombre: sc.nombre.trim(), puntaje: sc.puntaje.trim() || '0' }))
+          .filter(sc => sc.nombre)
+      }))
       .filter(c => c.nombre)
 
     if (criteriosValidos.length === 0) {
@@ -312,7 +334,7 @@ export function RamoDetails() {
         setCriteriosError(data.error || 'No se pudieron guardar los criterios')
       } else {
         setSelectedEvalCriterios(data.criterios || [])
-        setCriterios([{ nombre: '', descripcion: '' }])
+        setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
         setIsCriteriosModalOpen(false)
         alert('Criterios guardados correctamente')
       }
@@ -322,11 +344,11 @@ export function RamoDetails() {
   }
 
   const addCriterio = () => {
-    setCriterios([...criterios, { nombre: '', descripcion: '' }])
+    setCriterios([...criterios, { nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   }
 
   const addNewEvalCriterio = () => {
-    setNewEvalCriterios([...newEvalCriterios, { nombre: '', descripcion: '' }])
+    setNewEvalCriterios([...newEvalCriterios, { nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   }
 
   const removeCriterio = (index: number) => {
@@ -337,7 +359,7 @@ export function RamoDetails() {
     setNewEvalCriterios(newEvalCriterios.filter((_, i) => i !== index))
   }
 
-  const updateCriterio = (index: number, field: string, value: string | number) => {
+  const updateCriterio = (index: number, field: keyof CriterioDraft, value: string) => {
     const newCriterios = [...criterios]
     newCriterios[index] = { ...newCriterios[index], [field]: value }
     setCriterios(newCriterios)
@@ -349,14 +371,49 @@ export function RamoDetails() {
     setNewEvalCriterios(updatedCriterios)
   }
 
+  const addSubCriterio = (criterioIndex: number, isNewEval: boolean) => {
+    const target = isNewEval ? newEvalCriterios : criterios
+    const setter = isNewEval ? setNewEvalCriterios : setCriterios
+    const updated = [...target]
+    updated[criterioIndex] = {
+      ...updated[criterioIndex],
+      subcriterios: [...updated[criterioIndex].subcriterios, { nombre: '', puntaje: '7' }]
+    }
+    setter(updated)
+  }
+
+  const removeSubCriterio = (criterioIndex: number, subIndex: number, isNewEval: boolean) => {
+    const target = isNewEval ? newEvalCriterios : criterios
+    const setter = isNewEval ? setNewEvalCriterios : setCriterios
+    const updated = [...target]
+    updated[criterioIndex] = {
+      ...updated[criterioIndex],
+      subcriterios: updated[criterioIndex].subcriterios.filter((_, i) => i !== subIndex)
+    }
+    setter(updated)
+  }
+
+  const updateSubCriterio = (criterioIndex: number, subIndex: number, field: keyof SubCriterioDraft, value: string, isNewEval: boolean) => {
+    const target = isNewEval ? newEvalCriterios : criterios
+    const setter = isNewEval ? setNewEvalCriterios : setCriterios
+    const updated = [...target]
+    updated[criterioIndex] = {
+      ...updated[criterioIndex],
+      subcriterios: updated[criterioIndex].subcriterios.map((sub, idx) => idx === subIndex ? { ...sub, [field]: value } : sub)
+    }
+    setter(updated)
+  }
+
   const openCriteriosModal = () => {
     if (selectedEvalCriterios.length > 0) {
       setCriterios(selectedEvalCriterios.map(c => ({
         nombre: c.nombre,
-        descripcion: c.descripcion || ''
+        descripcion: c.descripcion || '',
+        valor_maximo: String(c.valor_maximo ?? '7'),
+        subcriterios: Array.isArray((c as any).subcriterios) ? (c as any).subcriterios.map((sc: any) => ({ nombre: sc.nombre || '', puntaje: String(sc.puntaje ?? '7') })) : [{ nombre: '', puntaje: '7' }]
       })))
     } else {
-      setCriterios([{ nombre: '', descripcion: '' }])
+      setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
     }
     setCriteriosError(null)
     setIsCriteriosModalOpen(true)
@@ -529,6 +586,15 @@ export function RamoDetails() {
                                 <p style={{ margin: 0, color: '#666', fontSize: '0.9rem', lineHeight: 1.4 }}>
                                   {criterio.descripcion || 'Sin descripción'}
                                 </p>
+                                {Array.isArray(criterio.subcriterios) && criterio.subcriterios.length > 0 && (
+                                  <ul style={{ margin: '0.5rem 0 0 1rem', padding: 0, color: '#4b5563', fontSize: '0.9rem' }}>
+                                    {criterio.subcriterios.map((sub, subIndex) => (
+                                      <li key={`${criterio.id_criterio}-${subIndex}`}>
+                                        {sub.nombre}: {sub.puntaje}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                               </div>
                               <span style={{ padding: '0.25rem 0.5rem', backgroundColor: '#e7f5ff', color: '#1976d2', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                                 {Number(criterio.ponderacion).toFixed(2)}%
@@ -790,7 +856,7 @@ export function RamoDetails() {
                         type="text"
                         value={criterio.nombre}
                         onChange={(e) => updateNewEvalCriterio(index, 'nombre', e.target.value)}
-                        placeholder="Nombre del criterio (ej: Dominio del tema)"
+                        placeholder="Nombre del criterio (ej: Presentación correcta)"
                         style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
                         required
                       />
@@ -800,6 +866,53 @@ export function RamoDetails() {
                         placeholder="Descripción del criterio (opcional)"
                         style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc', minHeight: '70px', resize: 'vertical' }}
                       />
+                      <input
+                        type="number"
+                        min="1"
+                        value={criterio.valor_maximo}
+                        onChange={(e) => updateNewEvalCriterio(index, 'valor_maximo', e.target.value)}
+                        placeholder="Puntaje máximo del criterio"
+                        style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                      />
+
+                      <div style={{ padding: '0.75rem', border: '1px dashed #c7d2fe', borderRadius: '8px', backgroundColor: '#f8faff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <strong style={{ color: '#4338ca' }}>Subcriterios</strong>
+                          <button
+                            type="button"
+                            onClick={() => addSubCriterio(index, true)}
+                            style={{ padding: '0.35rem 0.6rem', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                          >
+                            + Agregar
+                          </button>
+                        </div>
+                        {criterio.subcriterios.map((sub, subIndex) => (
+                          <div key={`${index}-${subIndex}`} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.6fr auto', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                            <input
+                              type="text"
+                              value={sub.nombre}
+                              onChange={(e) => updateSubCriterio(index, subIndex, 'nombre', e.target.value, true)}
+                              placeholder="Nombre del subcriterio"
+                              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                            />
+                            <input
+                              type="number"
+                              min="0"
+                              value={sub.puntaje}
+                              onChange={(e) => updateSubCriterio(index, subIndex, 'puntaje', e.target.value, true)}
+                              placeholder="Puntaje"
+                              style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeSubCriterio(index, subIndex, true)}
+                              style={{ padding: '0.6rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                            >
+                              X
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -869,7 +982,7 @@ export function RamoDetails() {
                       type="text" 
                       value={criterio.nombre}
                       onChange={(e) => updateCriterio(index, 'nombre', e.target.value)}
-                      placeholder="Nombre del criterio (ej: Dominio del tema)"
+                      placeholder="Nombre del criterio (ej: Presentación correcta)"
                       style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
                       required
                     />
@@ -880,6 +993,52 @@ export function RamoDetails() {
                       placeholder="Descripción (opcional)"
                       style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
                     />
+                    <input
+                      type="number"
+                      min="1"
+                      value={criterio.valor_maximo}
+                      onChange={(e) => updateCriterio(index, 'valor_maximo', e.target.value)}
+                      placeholder="Puntaje máximo del criterio"
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
+                    <div style={{ padding: '0.75rem', border: '1px dashed #c7d2fe', borderRadius: '8px', backgroundColor: '#f8faff' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ color: '#4338ca' }}>Subcriterios</strong>
+                        <button
+                          type="button"
+                          onClick={() => addSubCriterio(index, false)}
+                          style={{ padding: '0.35rem 0.6rem', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                        >
+                          + Agregar
+                        </button>
+                      </div>
+                      {criterio.subcriterios.map((sub, subIndex) => (
+                        <div key={`${index}-${subIndex}`} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.6fr auto', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <input
+                            type="text"
+                            value={sub.nombre}
+                            onChange={(e) => updateSubCriterio(index, subIndex, 'nombre', e.target.value, false)}
+                            placeholder="Nombre del subcriterio"
+                            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={sub.puntaje}
+                            onChange={(e) => updateSubCriterio(index, subIndex, 'puntaje', e.target.value, false)}
+                            placeholder="Puntaje"
+                            style={{ padding: '0.6rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeSubCriterio(index, subIndex, false)}
+                            style={{ padding: '0.6rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                          >
+                            X
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -9,6 +9,39 @@ const calculateEqualPonderacion = (totalCriterios) => {
   return Number((100 / totalCriterios).toFixed(2));
 };
 
+const parseSubcriterios = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const normalizeCriterioPayload = (criterio) => {
+  const nombre = String(criterio?.nombre || '').trim();
+  const descripcion = criterio?.descripcion || null;
+  const valorMaximo = Number(criterio?.valor_maximo ?? DEFAULT_VALOR_MAXIMO);
+  const subcriterios = Array.isArray(criterio?.subcriterios)
+    ? criterio.subcriterios
+        .map((subcriterio) => ({
+          nombre: String(subcriterio?.nombre || '').trim(),
+          puntaje: Number(subcriterio?.puntaje ?? 0),
+        }))
+        .filter((subcriterio) => subcriterio.nombre && Number.isFinite(subcriterio.puntaje) && subcriterio.puntaje >= 0)
+    : [];
+
+  return {
+    nombre,
+    descripcion,
+    valor_maximo: Number.isFinite(valorMaximo) && valorMaximo > 0 ? valorMaximo : DEFAULT_VALOR_MAXIMO,
+    subcriterios,
+  };
+};
+
 // Generar código único de 6 caracteres
 const generateSessionCode = () => {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
@@ -19,7 +52,11 @@ const getEvaluacionCriterios = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.query('SELECT * FROM criterios_evaluacion WHERE id_evaluacion = $1 ORDER BY id_criterio ASC', [id]);
-    res.json(result.rows);
+    const criterios = result.rows.map((criterio) => ({
+      ...criterio,
+      subcriterios: parseSubcriterios(criterio.subcriterios),
+    }));
+    res.json(criterios);
   } catch (error) {
     console.error('Error fetching criterios:', error);
     res.status(500).json({ error: 'No se pudieron obtener los criterios' });
@@ -29,7 +66,7 @@ const getEvaluacionCriterios = async (req, res) => {
 // Crear o actualizar criterios de una evaluación
 const saveEvaluacionCriterios = async (req, res) => {
   const { id } = req.params;
-  const { criterios } = req.body; // Array de { nombre, descripcion }
+  const { criterios } = req.body; // Array de { nombre, descripcion, valor_maximo, subcriterios }
 
   if (!Array.isArray(criterios)) {
     return res.status(400).json({ error: 'Formato de criterios inválido' });
@@ -39,12 +76,11 @@ const saveEvaluacionCriterios = async (req, res) => {
     return res.status(400).json({ error: 'Debe agregar al menos un criterio' });
   }
 
-  const criteriosValidos = criterios.map((criterio) => ({
-    nombre: String(criterio.nombre || '').trim(),
-    descripcion: criterio.descripcion || null,
-  }));
+  const criteriosValidos = criterios
+    .map(normalizeCriterioPayload)
+    .filter((criterio) => criterio.nombre);
 
-  if (criteriosValidos.some((criterio) => !criterio.nombre)) {
+  if (criteriosValidos.length === 0) {
     return res.status(400).json({ error: 'Todos los criterios deben tener nombre' });
   }
 
@@ -65,10 +101,13 @@ const saveEvaluacionCriterios = async (req, res) => {
 
     for (const c of criteriosValidos) {
       const resC = await client.query(
-        'INSERT INTO criterios_evaluacion (id_evaluacion, nombre, descripcion, ponderacion, tipo_escala, valor_maximo) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [id, c.nombre, c.descripcion, ponderacion, DEFAULT_TIPO_ESCALA, DEFAULT_VALOR_MAXIMO]
+        'INSERT INTO criterios_evaluacion (id_evaluacion, nombre, descripcion, ponderacion, tipo_escala, valor_maximo, subcriterios) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [id, c.nombre, c.descripcion, ponderacion, DEFAULT_TIPO_ESCALA, c.valor_maximo, JSON.stringify(c.subcriterios)]
       );
-      inserted.push(resC.rows[0]);
+      inserted.push({
+        ...resC.rows[0],
+        subcriterios: parseSubcriterios(resC.rows[0].subcriterios),
+      });
     }
 
     await client.query('COMMIT');
