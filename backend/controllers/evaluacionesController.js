@@ -25,6 +25,7 @@ const normalizeCriterioPayload = (criterio) => {
   const nombre = String(criterio?.nombre || '').trim();
   const descripcion = criterio?.descripcion || null;
   const valorMaximo = Number(criterio?.valor_maximo ?? DEFAULT_VALOR_MAXIMO);
+  const ponderacion = criterio?.ponderacion ? Number(criterio.ponderacion) : null;
   const subcriterios = Array.isArray(criterio?.subcriterios)
     ? criterio.subcriterios
         .map((subcriterio) => ({
@@ -38,6 +39,7 @@ const normalizeCriterioPayload = (criterio) => {
     nombre,
     descripcion,
     valor_maximo: Number.isFinite(valorMaximo) && valorMaximo > 0 ? valorMaximo : DEFAULT_VALOR_MAXIMO,
+    ponderacion: Number.isFinite(ponderacion) && ponderacion > 0 ? ponderacion : null,
     subcriterios,
   };
 };
@@ -97,12 +99,18 @@ const saveEvaluacionCriterios = async (req, res) => {
     await client.query('DELETE FROM criterios_evaluacion WHERE id_evaluacion = $1', [id]);
 
     const inserted = [];
-    const ponderacion = calculateEqualPonderacion(criteriosValidos.length);
+    
+    // Calcular ponderación equitativa solo para criterios sin ponderación manual
+    const criteriosSinPonderacion = criteriosValidos.filter(c => !c.ponderacion);
+    const ponderacionEquitativa = criteriosSinPonderacion.length > 0 
+      ? calculateEqualPonderacion(criteriosSinPonderacion.length) 
+      : 0;
 
     for (const c of criteriosValidos) {
+      const ponderacionFinal = c.ponderacion || ponderacionEquitativa;
       const resC = await client.query(
         'INSERT INTO criterios_evaluacion (id_evaluacion, nombre, descripcion, ponderacion, tipo_escala, valor_maximo, subcriterios) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-        [id, c.nombre, c.descripcion, ponderacion, DEFAULT_TIPO_ESCALA, c.valor_maximo, JSON.stringify(c.subcriterios)]
+        [id, c.nombre, c.descripcion, ponderacionFinal, DEFAULT_TIPO_ESCALA, c.valor_maximo, JSON.stringify(c.subcriterios)]
       );
       inserted.push({
         ...resC.rows[0],
@@ -123,7 +131,7 @@ const saveEvaluacionCriterios = async (req, res) => {
 
 // Enviar respuestas de la evaluación (Alumno evaluador)
 const submitRespuestas = async (req, res) => {
-  const { id_sesion, respuestas, nombre_evaluador, rut_evaluador } = req.body; 
+  const { id_sesion, respuestas, nombre_evaluador, rut_evaluador, nombre_estudiante, rut_estudiante } = req.body; 
   // respuestas: [{ id_criterio, valor_asignado, comentario }]
 
   if (!id_sesion || !Array.isArray(respuestas)) {
@@ -146,8 +154,8 @@ const submitRespuestas = async (req, res) => {
 
     for (const r of respuestas) {
       await client.query(
-        'INSERT INTO respuestas_evaluacion (id_sesion, id_criterio, valor_asignado, comentario, nombre_evaluador, rut_evaluador) VALUES ($1, $2, $3, $4, $5, $6)',
-        [id_sesion, r.id_criterio, r.valor_asignado, r.comentario || null, nombre_evaluador || null, rut_evaluador || null]
+        'INSERT INTO respuestas_evaluacion (id_sesion, id_criterio, valor_asignado, comentario, nombre_evaluador, rut_evaluador, nombre_estudiante, rut_estudiante) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        [id_sesion, r.id_criterio, r.valor_asignado, r.comentario || null, nombre_evaluador || null, rut_evaluador || null, nombre_estudiante || null, rut_estudiante || null]
       );
     }
 
@@ -239,6 +247,55 @@ const getSessionByCode = async (req, res) => {
   } catch (error) {
     console.error('Error fetching session:', error);
     res.status(500).json({ error: 'No se pudo obtener la sesión' });
+  }
+};
+
+// Desactivar sesión
+const deactivateSession = async (req, res) => {
+  const { id_sesion } = req.params;
+
+  try {
+    const result = await pool.query(
+      'UPDATE sesiones SET estado = $1 WHERE id_sesion = $2 RETURNING *',
+      ['inactivo', id_sesion]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Sesión no encontrada' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error deactivating session:', error);
+    res.status(500).json({ error: 'No se pudo desactivar la sesión' });
+  }
+};
+
+// Obtener sesión activa por evaluación y grupo
+const getActiveSession = async (req, res) => {
+  const { id_evaluacion, id_grupo } = req.params;
+
+  try {
+    const result = await pool.query(
+      'SELECT * FROM sesiones WHERE id_evaluacion = $1 AND id_grupo = $2 AND estado = $3 ORDER BY created_at DESC LIMIT 1',
+      [id_evaluacion, id_grupo, 'activo']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'No hay sesión activa' });
+    }
+
+    const session = result.rows[0];
+
+    // Verificar expiración
+    if (session.expires_at && new Date(session.expires_at) < new Date()) {
+      return res.status(404).json({ error: 'Sesión expirada' });
+    }
+
+    res.json(session);
+  } catch (error) {
+    console.error('Error fetching active session:', error);
+    res.status(500).json({ error: 'No se pudo obtener la sesión activa' });
   }
 };
 
@@ -453,6 +510,8 @@ module.exports = {
   submitRespuestas,
   createSession,
   getSessionByCode,
+  deactivateSession,
+  getActiveSession,
   getGroupEvaluations,
   calculateGroupGrade,
   getGroupEvaluationResults,

@@ -27,18 +27,27 @@ interface Sesion {
   id_evaluacion: number
 }
 
+interface EstudianteGrupo {
+  id: number
+  nombre: string
+  rut: string
+  correo?: string
+}
+
 export function EvaluationForm() {
   const { codigo } = useParams<{ codigo: string }>()
   const navigate = useNavigate()
   
   const [sesion, setSesion] = useState<Sesion | null>(null)
   const [criterios, setCriterios] = useState<Criterio[]>([])
-  const [respuestas, setRespuestas] = useState<{ [key: number]: { valor: number, comentario: string } }>({})
+  const [estudiantes, setEstudiantes] = useState<EstudianteGrupo[]>([])
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null)
+  const [respuestas, setRespuestas] = useState<Record<number, Record<number, { valor: number, comentario: string }>>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [submitted, setSubmitted] = useState(false)
-  const [nombreEvaluador, setNombreEvaluador] = useState('')
-  const [rutEvaluador, setRutEvaluador] = useState('')
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [nombreEvaluador] = useState('')
+  const [rutEvaluador] = useState('')
 
   useEffect(() => {
     if (!codigo) {
@@ -67,6 +76,14 @@ export function EvaluationForm() {
           setCriterios(criteriosData)
         }
 
+        if (sesionData.id_grupo) {
+          const estudiantesRes = await fetch(apiUrl(`/students/group/${sesionData.id_grupo}`))
+          const estudiantesData = await estudiantesRes.json()
+          if (estudiantesRes.ok) {
+            setEstudiantes(estudiantesData)
+          }
+        }
+
         setLoading(false)
       } catch (err) {
         setError('Error de conexión')
@@ -77,39 +94,53 @@ export function EvaluationForm() {
     loadSession()
   }, [codigo])
 
-  const handleRespuestaChange = (criterioId: number, field: 'valor' | 'comentario', value: string | number) => {
-    setRespuestas(prev => ({
-      ...prev,
-      [criterioId]: {
-        ...prev[criterioId],
-        [field]: value
-      }
-    }))
-  }
+  useEffect(() => {
+    if (!selectedStudentId && estudiantes.length > 0) {
+      setSelectedStudentId(estudiantes[0].id)
+      return
+    }
 
-  const handleSubcriterioSelect = (criterio: Criterio, subcriterio: SubCriterio) => {
-    const puntaje = typeof subcriterio.puntaje === 'number' ? subcriterio.puntaje : Number(subcriterio.puntaje) || 0
-    handleRespuestaChange(criterio.id_criterio, 'valor', puntaje)
+    if (selectedStudentId && !estudiantes.some((estudiante) => estudiante.id === selectedStudentId)) {
+      setSelectedStudentId(estudiantes[0]?.id ?? null)
+    }
+  }, [estudiantes, selectedStudentId])
+
+  const handleRespuestaChange = (criterioId: number, field: 'valor' | 'comentario', value: string | number) => {
+    if (!selectedStudentId) return
+
+    setRespuestas((prev) => ({
+      ...prev,
+      [selectedStudentId]: {
+        ...(prev[selectedStudentId] || {}),
+        [criterioId]: {
+          ...(prev[selectedStudentId]?.[criterioId] || { valor: 0, comentario: '' }),
+          [field]: value,
+        },
+      },
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSuccessMessage(null)
 
-    if (!sesion) return
+    if (!sesion || !selectedStudentId) return
 
-    // Validar que todos los criterios tengan valor
-    const missingCriterios = criterios.filter(c => !respuestas[c.id_criterio]?.valor)
+    const estudianteActual = estudiantes.find((estudiante) => estudiante.id === selectedStudentId)
+    const respuestasActuales = respuestas[selectedStudentId] || {}
+
+    const missingCriterios = criterios.filter((c) => !respuestasActuales[c.id_criterio]?.valor)
     if (missingCriterios.length > 0) {
       setError('Por favor completa todos los criterios de evaluación')
       return
     }
 
     try {
-      const respuestasArray = criterios.map(c => ({
+      const respuestasArray = criterios.map((c) => ({
         id_criterio: c.id_criterio,
-        valor_asignado: respuestas[c.id_criterio]?.valor || 0,
-        comentario: respuestas[c.id_criterio]?.comentario || null
+        valor_asignado: respuestasActuales[c.id_criterio]?.valor || 0,
+        comentario: respuestasActuales[c.id_criterio]?.comentario || null,
       }))
 
       const res = await fetch(apiUrl('/evaluaciones/respuestas'), {
@@ -119,15 +150,27 @@ export function EvaluationForm() {
           id_sesion: sesion.id_sesion,
           respuestas: respuestasArray,
           nombre_evaluador: nombreEvaluador,
-          rut_evaluador: rutEvaluador
-        })
+          rut_evaluador: rutEvaluador,
+          nombre_estudiante: estudianteActual?.nombre || null,
+          rut_estudiante: estudianteActual?.rut || null,
+        }),
       })
 
       const data = await res.json()
       if (!res.ok) {
         setError(data.error || 'No se pudo enviar la evaluación')
       } else {
-        setSubmitted(true)
+        setSuccessMessage(`Evaluación enviada para ${estudianteActual?.nombre || 'el estudiante seleccionado'}.`)
+        setRespuestas((prev) => ({
+          ...prev,
+          [selectedStudentId]: {},
+        }))
+
+        const currentIndex = estudiantes.findIndex((estudiante) => estudiante.id === selectedStudentId)
+        const nextStudent = estudiantes[currentIndex + 1]
+        if (nextStudent) {
+          setSelectedStudentId(nextStudent.id)
+        }
       }
     } catch (err) {
       setError('Error de red')
@@ -159,180 +202,190 @@ export function EvaluationForm() {
     )
   }
 
-  if (submitted) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '800px', margin: '0 auto' }}>
-        <div style={{ backgroundColor: '#efe', padding: '2rem', borderRadius: '12px', border: '1px solid #cfc' }}>
-          <h2 style={{ color: '#3c3', margin: '0 0 1rem' }}>¡Evaluación enviada!</h2>
-          <p style={{ color: '#666', margin: 0 }}>Gracias por participar en la evaluación.</p>
-          <button 
-            onClick={() => navigate('/')}
-            style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', backgroundColor: '#1976d2', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-          >
-            Volver al inicio
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-        <h1 style={{ margin: '0 0 0.5rem', color: '#333' }}>Formulario de Evaluación</h1>
-        <p style={{ color: '#666', margin: 0 }}>Código de sesión: <strong>{codigo}</strong></p>
+    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', fontFamily: 'Inter, Roboto, sans-serif' }}>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <p style={{ margin: '0 0 0.35rem', color: '#6366f1', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: '0.8rem' }}>
+          Rúbrica de evaluación oral
+        </p>
+        <h1 style={{ margin: 0, color: '#111827', fontSize: '1.8rem' }}>Evalúa la exposición con rapidez y claridad</h1>
+        <p style={{ color: '#6b7280', margin: '0.4rem 0 0' }}>Código de sesión: <strong>{codigo}</strong></p>
         {sesion && (
-          <p style={{ color: '#666', margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
+          <p style={{ color: '#6b7280', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
             Expira: {new Date(sesion.expires_at).toLocaleString()}
           </p>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div style={{ padding: '1.5rem', borderRadius: '12px', backgroundColor: 'white', border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-          <h3 style={{ margin: '0 0 1rem', color: '#333' }}>Información del Evaluador</h3>
-          <div style={{ display: 'grid', gap: '1rem' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                Tu Nombre *
-              </label>
-              <input 
-                type="text" 
-                value={nombreEvaluador}
-                onChange={(e) => setNombreEvaluador(e.target.value)}
-                placeholder="Ingresa tu nombre completo"
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
-                required
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                RUT (opcional)
-              </label>
-              <input 
-                type="text" 
-                value={rutEvaluador}
-                onChange={(e) => setRutEvaluador(e.target.value)}
-                placeholder="Ej: 12345678-9"
-                style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
-              />
-            </div>
-          </div>
-        </div>
-        {criterios.map(criterio => (
-          <div key={criterio.id_criterio} style={{ 
-            padding: '1.5rem', 
-            borderRadius: '12px', 
-            backgroundColor: 'white', 
-            border: '1px solid #eee',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-          }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#333' }}>{criterio.nombre}</h3>
-              {criterio.descripcion && (
-                <p style={{ color: '#666', margin: 0, fontSize: '0.9rem' }}>{criterio.descripcion}</p>
-              )}
-              <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#888' }}>
-                Ponderación: <strong>{criterio.ponderacion}%</strong> | 
-                Escala: 0 - {criterio.valor_maximo}
-              </div>
-            </div>
-
-            {Array.isArray(criterio.subcriterios) && criterio.subcriterios.length > 0 ? (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                  Selecciona un subcriterio
-                </label>
-                <div style={{ display: 'grid', gap: '0.5rem' }}>
-                  {criterio.subcriterios.map((sub, index) => {
-                    const puntaje = typeof sub.puntaje === 'number' ? sub.puntaje : Number(sub.puntaje) || 0
-                    return (
-                      <button
-                        key={`${criterio.id_criterio}-${index}`}
-                        type="button"
-                        onClick={() => handleSubcriterioSelect(criterio, sub)}
-                        style={{
-                          padding: '0.75rem',
-                          borderRadius: '6px',
-                          border: respuestas[criterio.id_criterio]?.valor === puntaje ? '2px solid #1976d2' : '1px solid #ccc',
-                          backgroundColor: respuestas[criterio.id_criterio]?.valor === puntaje ? '#e7f5ff' : 'white',
-                          textAlign: 'left',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {sub.nombre} — {puntaje}
-                      </button>
-                    )
-                  })}
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 300px) 1fr', gap: '1.5rem', alignItems: 'start' }}>
+          <aside style={{ position: 'sticky', top: '1rem' }}>
+            <div style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '18px', boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '999px', background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                  {selectedStudentId ? (estudiantes.find((estudiante) => estudiante.id === selectedStudentId)?.nombre?.split(' ').map((word) => word[0]).slice(0, 2).join('').toUpperCase() || 'ES') : 'ES'}
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Estudiante a evaluar</p>
+                  <h3 style={{ margin: '0.2rem 0 0', color: '#111827', fontSize: '1.05rem' }}>
+                    {estudiantes.find((estudiante) => estudiante.id === selectedStudentId)?.nombre || 'Cargando estudiantes...'}
+                  </h3>
                 </div>
               </div>
-            ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                  Calificación (0 - {criterio.valor_maximo})
-                </label>
-                <input 
-                  type="number" 
-                  min="0"
-                  max={criterio.valor_maximo}
-                  step="0.1"
-                  value={respuestas[criterio.id_criterio]?.valor || ''}
-                  onChange={(e) => handleRespuestaChange(criterio.id_criterio, 'valor', parseFloat(e.target.value) || 0)}
-                  style={{ 
-                    width: '100%', 
-                    padding: '0.75rem', 
-                    borderRadius: '6px', 
-                    border: '1px solid #ccc',
-                    fontSize: '1rem'
-                  }}
-                  required
-                />
-              </div>
-            )}
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#555' }}>
-                Comentario (opcional)
-              </label>
-              <textarea 
-                value={respuestas[criterio.id_criterio]?.comentario || ''}
-                onChange={(e) => handleRespuestaChange(criterio.id_criterio, 'comentario', e.target.value)}
-                placeholder="Agrega un comentario sobre este criterio..."
-                style={{ 
-                  width: '100%', 
-                  padding: '0.75rem', 
-                  borderRadius: '6px', 
-                  border: '1px solid #ccc',
-                  minHeight: '80px',
-                  resize: 'vertical'
-                }}
-              />
+              <div style={{ background: '#f8faff', border: '1px solid #e0e7ff', borderRadius: '14px', padding: '0.9rem', marginBottom: '0.9rem' }}>
+                <p style={{ margin: 0, color: '#4f46e5', fontWeight: 700, fontSize: '0.9rem' }}>Exposición oral</p>
+                <p style={{ margin: '0.25rem 0 0', color: '#6b7280', fontSize: '0.92rem' }}>Grupo • Evaluación individual</p>
+              </div>
+
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                <div style={{ padding: '0.7rem 0.8rem', borderRadius: '10px', background: '#f9fafb', color: '#374151', fontSize: '0.9rem' }}>
+                  <strong style={{ color: '#111827' }}>Puntajes:</strong> 7, 5, 3, 1
+                </div>
+                <div style={{ padding: '0.7rem 0.8rem', borderRadius: '10px', background: '#f9fafb', color: '#374151', fontSize: '0.9rem' }}>
+                  <strong style={{ color: '#111827' }}>Modo:</strong> selección rápida por criterio
+                </div>
+              </div>
+
+              {estudiantes.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                  <p style={{ margin: '0 0 0.5rem', color: '#374151', fontSize: '0.9rem', fontWeight: 700 }}>Otros estudiantes del grupo</p>
+                  <div style={{ display: 'grid', gap: '0.45rem' }}>
+                    {estudiantes.map((estudiante) => {
+                      const active = estudiante.id === selectedStudentId
+                      return (
+                        <button
+                          key={estudiante.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedStudentId(estudiante.id)
+                            setError(null)
+                            setSuccessMessage(null)
+                          }}
+                          style={{
+                            textAlign: 'left',
+                            padding: '0.7rem 0.8rem',
+                            borderRadius: '10px',
+                            border: active ? '1px solid #4f46e5' : '1px solid #e5e7eb',
+                            backgroundColor: active ? '#eef2ff' : '#fff',
+                            color: active ? '#4338ca' : '#374151',
+                            cursor: 'pointer',
+                            fontWeight: active ? 700 : 500,
+                          }}
+                        >
+                          {estudiante.nombre}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
+          </aside>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {criterios.map((criterio) => {
+              const options = Array.isArray(criterio.subcriterios) && criterio.subcriterios.length > 0
+                ? criterio.subcriterios.map((sub) => ({
+                    valor: typeof sub.puntaje === 'number' ? sub.puntaje : Number(sub.puntaje) || 0,
+                    descripcion: sub.nombre,
+                  }))
+                : [
+                    { valor: 7, descripcion: 'Excelente' },
+                    { valor: 5, descripcion: 'Bueno' },
+                    { valor: 3, descripcion: 'Aceptable' },
+                    { valor: 1, descripcion: 'Insuficiente' },
+                  ]
+
+              return (
+                <div key={criterio.id_criterio} style={{ backgroundColor: 'white', border: '1px solid #e5e7eb', borderRadius: '16px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)', padding: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1fr) 1fr', gap: '1rem', alignItems: 'stretch' }}>
+                    <div style={{ background: '#14213d', color: 'white', borderRadius: '14px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                      <h3 style={{ margin: '0 0 0.35rem', fontSize: '1rem' }}>{criterio.nombre}</h3>
+                      {criterio.descripcion && (
+                        <p style={{ margin: 0, color: '#d1d5db', fontSize: '0.9rem', lineHeight: 1.4 }}>{criterio.descripcion}</p>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(90px, 1fr))', gap: '0.75rem' }}>
+                      {options.map((option) => {
+                        const selected = Number(respuestas[selectedStudentId || 0]?.[criterio.id_criterio]?.valor) === option.valor
+                        return (
+                          <button
+                            key={`${criterio.id_criterio}-${option.valor}`}
+                            type="button"
+                            onClick={() => handleRespuestaChange(criterio.id_criterio, 'valor', option.valor)}
+                            style={{
+                              border: selected ? '2px solid #4f46e5' : '1px solid #dbe4ff',
+                              backgroundColor: selected ? '#eef2ff' : '#f8fafc',
+                              borderRadius: '12px',
+                              padding: '0.8rem 0.6rem',
+                              textAlign: 'left',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              boxShadow: selected ? '0 6px 16px rgba(79, 70, 229, 0.15)' : 'none',
+                            }}
+                          >
+                            <div style={{ color: '#111827', fontWeight: 700, fontSize: '1rem', marginBottom: '0.2rem' }}>{option.valor}</div>
+                            <div style={{ color: '#4b5563', fontSize: '0.8rem', lineHeight: 1.3 }}>{option.descripcion}</div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: '0.9rem' }}>
+                    <textarea
+                      value={respuestas[selectedStudentId || 0]?.[criterio.id_criterio]?.comentario || ''}
+                      onChange={(e) => handleRespuestaChange(criterio.id_criterio, 'comentario', e.target.value)}
+                      placeholder="Agregar comentario opcional"
+                      style={{
+                        width: '100%',
+                        padding: '0.8rem',
+                        borderRadius: '10px',
+                        border: '1px solid #e5e7eb',
+                        minHeight: '70px',
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        ))}
+        </div>
 
         {error && (
-          <div style={{ padding: '1rem', backgroundColor: '#fee', borderRadius: '8px', border: '1px solid #fcc', color: '#c33' }}>
+          <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#fee', borderRadius: '10px', border: '1px solid #fcc', color: '#c33' }}>
             {error}
           </div>
         )}
 
-        <button 
-          type="submit" 
-          style={{ 
-            padding: '1rem 2rem', 
-            backgroundColor: '#2b8a3e', 
-            color: 'white', 
-            border: 'none', 
-            borderRadius: '8px', 
-            cursor: 'pointer', 
-            fontWeight: 'bold',
-            fontSize: '1.1rem',
-            alignSelf: 'center'
-          }}
-        >
-          Enviar Evaluación
-        </button>
+        {successMessage && (
+          <div style={{ marginTop: '1.25rem', padding: '1rem', backgroundColor: '#effdf5', borderRadius: '10px', border: '1px solid #b7f0c8', color: '#17663b' }}>
+            {successMessage}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem' }}>
+          <button
+            type="submit"
+            style={{
+              padding: '0.95rem 1.6rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '999px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              fontSize: '1rem',
+              boxShadow: '0 10px 20px rgba(37, 99, 235, 0.2)',
+            }}
+          >
+            Enviar evaluación
+          </button>
+        </div>
       </form>
     </div>
   )

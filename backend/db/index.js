@@ -182,7 +182,9 @@ const initDb = async () => {
     await client.query(`
       ALTER TABLE respuestas_evaluacion
       ADD COLUMN IF NOT EXISTS nombre_evaluador VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS rut_evaluador VARCHAR(20);
+      ADD COLUMN IF NOT EXISTS rut_evaluador VARCHAR(20),
+      ADD COLUMN IF NOT EXISTS nombre_estudiante VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS rut_estudiante VARCHAR(20);
     `);
 
     // 13. Tabla de Votaciones (Mantenida por compatibilidad si se usa en otros flujos)

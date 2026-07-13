@@ -5,6 +5,8 @@ const {
   submitRespuestas,
   createSession,
   getSessionByCode,
+  deactivateSession,
+  getActiveSession,
   getGroupEvaluations,
   calculateGroupGrade,
   getGroupEvaluationResults,
@@ -22,6 +24,8 @@ router.post('/respuestas', submitRespuestas);
 // Nuevas rutas para sesiones y evaluaciones de grupos
 router.post('/sesiones', createSession);
 router.get('/sesiones/:codigo', getSessionByCode);
+router.put('/sesiones/:id_sesion/desactivar', deactivateSession);
+router.get('/sesiones/activa/:id_evaluacion/:id_grupo', getActiveSession);
 router.get('/grupo/:id_grupo/evaluaciones', getGroupEvaluations);
 router.get('/grupo/:id_grupo/evaluacion/:id_evaluacion/calcular', calculateGroupGrade);
 router.get('/grupo/:id_grupo/evaluacion/:id_evaluacion/resultados', getGroupEvaluationResults);

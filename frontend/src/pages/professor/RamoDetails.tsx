@@ -50,6 +50,7 @@ interface CriterioDraft {
   nombre: string
   descripcion: string
   valor_maximo: string
+  ponderacion: string
   subcriterios: SubCriterioDraft[]
 }
 
@@ -97,12 +98,12 @@ export function RamoDetails() {
   const [newEvalTitle, setNewEvalTitle] = useState('')
   const [newEvalDesc, setNewEvalDesc] = useState('')
   const [newEvalDate, setNewEvalDate] = useState('')
-  const [newEvalCriterios, setNewEvalCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+  const [newEvalCriterios, setNewEvalCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   const [addEvalError, setAddEvalError] = useState<string | null>(null)
 
   // Criterios de evaluación
   const [isCriteriosModalOpen, setIsCriteriosModalOpen] = useState(false)
-  const [criterios, setCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+  const [criterios, setCriterios] = useState<CriterioDraft[]>([{ nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   const [selectedEvalCriterios, setSelectedEvalCriterios] = useState<CriterioEvaluacion[]>([])
   const [criteriosLoading, setCriteriosLoading] = useState(false)
   const [criteriosError, setCriteriosError] = useState<string | null>(null)
@@ -244,6 +245,7 @@ export function RamoDetails() {
         nombre: c.nombre.trim(),
         descripcion: c.descripcion.trim(),
         valor_maximo: c.valor_maximo.trim() || '7',
+        ponderacion: c.ponderacion.trim() || '',
         subcriterios: c.subcriterios
           .map(sc => ({ nombre: sc.nombre.trim(), puntaje: sc.puntaje.trim() || '0' }))
           .filter(sc => sc.nombre)
@@ -288,7 +290,7 @@ export function RamoDetails() {
         setNewEvalTitle('')
         setNewEvalDesc('')
         setNewEvalDate('')
-        setNewEvalCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+        setNewEvalCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
         setIsEvalModalOpen(false)
         setSelectedEvalId(data.id_evaluacion)
         loadData()
@@ -312,6 +314,7 @@ export function RamoDetails() {
         nombre: c.nombre.trim(),
         descripcion: c.descripcion.trim(),
         valor_maximo: c.valor_maximo.trim() || '7',
+        ponderacion: c.ponderacion.trim() || '',
         subcriterios: c.subcriterios
           .map(sc => ({ nombre: sc.nombre.trim(), puntaje: sc.puntaje.trim() || '0' }))
           .filter(sc => sc.nombre)
@@ -334,7 +337,7 @@ export function RamoDetails() {
         setCriteriosError(data.error || 'No se pudieron guardar los criterios')
       } else {
         setSelectedEvalCriterios(data.criterios || [])
-        setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+        setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
         setIsCriteriosModalOpen(false)
         alert('Criterios guardados correctamente')
       }
@@ -344,11 +347,11 @@ export function RamoDetails() {
   }
 
   const addCriterio = () => {
-    setCriterios([...criterios, { nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+    setCriterios([...criterios, { nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   }
 
   const addNewEvalCriterio = () => {
-    setNewEvalCriterios([...newEvalCriterios, { nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+    setNewEvalCriterios([...newEvalCriterios, { nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
   }
 
   const removeCriterio = (index: number) => {
@@ -410,10 +413,11 @@ export function RamoDetails() {
         nombre: c.nombre,
         descripcion: c.descripcion || '',
         valor_maximo: String(c.valor_maximo ?? '7'),
+        ponderacion: String(c.ponderacion ?? ''),
         subcriterios: Array.isArray((c as any).subcriterios) ? (c as any).subcriterios.map((sc: any) => ({ nombre: sc.nombre || '', puntaje: String(sc.puntaje ?? '7') })) : [{ nombre: '', puntaje: '7' }]
       })))
     } else {
-      setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', subcriterios: [{ nombre: '', puntaje: '7' }] }])
+      setCriterios([{ nombre: '', descripcion: '', valor_maximo: '7', ponderacion: '', subcriterios: [{ nombre: '', puntaje: '7' }] }])
     }
     setCriteriosError(null)
     setIsCriteriosModalOpen(true)
@@ -825,7 +829,7 @@ export function RamoDetails() {
                   <div>
                     <h3 style={{ margin: 0, color: '#333', fontSize: '1.1rem' }}>Criterios de Evaluación</h3>
                     <p style={{ margin: '0.25rem 0 0', color: '#666', fontSize: '0.9rem' }}>
-                      Solo debes ingresar nombre y descripción. La ponderación será equitativa, escala por defecto y nota máxima 7.
+                      Ingresa nombre, descripción, ponderación (%) y puntaje máximo. Si no ingresas ponderación, se asignará equitativa.
                     </p>
                   </div>
                   <button
@@ -872,6 +876,16 @@ export function RamoDetails() {
                         value={criterio.valor_maximo}
                         onChange={(e) => updateNewEvalCriterio(index, 'valor_maximo', e.target.value)}
                         placeholder="Puntaje máximo del criterio"
+                        style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={criterio.ponderacion}
+                        onChange={(e) => updateNewEvalCriterio(index, 'ponderacion', e.target.value)}
+                        placeholder="Ponderación % (opcional)"
                         style={{ padding: '0.75rem', borderRadius: '6px', border: '1px solid #ccc' }}
                       />
 
@@ -1001,6 +1015,16 @@ export function RamoDetails() {
                       placeholder="Puntaje máximo del criterio"
                       style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
                     />
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={criterio.ponderacion}
+                      onChange={(e) => updateCriterio(index, 'ponderacion', e.target.value)}
+                      placeholder="Ponderación % (opcional)"
+                      style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    />
                     <div style={{ padding: '0.75rem', border: '1px dashed #c7d2fe', borderRadius: '8px', backgroundColor: '#f8faff' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <strong style={{ color: '#4338ca' }}>Subcriterios</strong>
@@ -1052,7 +1076,7 @@ export function RamoDetails() {
               </button>
 
               <div style={{ padding: '1rem', backgroundColor: '#e7f5ff', borderRadius: '8px', border: '1px solid #a5d8ff', color: '#0b5394' }}>
-                <strong>Configuración automática:</strong> el backend asigna ponderación equitativa entre criterios, escala por defecto y nota máxima 7.
+                <strong>Configuración:</strong> Si no ingresas ponderación, el backend asignará ponderación equitativa entre criterios.
               </div>
               
               {criteriosError && <p style={{ color: 'red', margin: 0 }}>{criteriosError}</p>}
